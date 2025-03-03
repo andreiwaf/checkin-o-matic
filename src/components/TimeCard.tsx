@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { motion } from "framer-motion";
-import { Clock, LogIn, LogOut, CheckSquare, Square, Loader2 } from "lucide-react";
+import { Clock, LogIn, LogOut, CheckSquare, Square, Loader2, Trash2 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { CheckTimeRecord, Task } from "@/lib/types";
 import { useState, useEffect } from "react";
@@ -25,6 +25,7 @@ const TimeCard = () => {
   const [newTask, setNewTask] = useState("");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const formatTime = (date: Date) => {
     return format(date, "h:mm a");
@@ -72,6 +73,7 @@ const TimeCard = () => {
     if (!newTask.trim()) return;
     
     try {
+      setIsSubmitting(true);
       const newTaskObj = {
         text: newTask.trim(),
         completed: false
@@ -101,6 +103,13 @@ const TimeCard = () => {
       });
     } catch (error) {
       console.error('Unexpected error:', error);
+      toast({
+        title: "Error adding task",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -126,6 +135,43 @@ const TimeCard = () => {
       ));
     } catch (error) {
       console.error('Unexpected error:', error);
+      toast({
+        title: "Error updating task",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const deleteTask = async (taskId: string) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', taskId);
+      
+      if (error) {
+        console.error('Error deleting task:', error);
+        toast({
+          title: "Error deleting task",
+          description: error.message,
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setTasks(tasks.filter(task => task.id !== taskId));
+      toast({
+        title: "Task deleted",
+        description: "Your task has been deleted successfully."
+      });
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      toast({
+        title: "Error deleting task",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
     }
   };
   
@@ -180,13 +226,18 @@ const TimeCard = () => {
             onChange={(e) => setNewTask(e.target.value)}
             placeholder="Add a task..."
             className="flex-1 px-3 py-2 text-sm rounded-md border border-border focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+            disabled={isSubmitting}
           />
           <button 
             type="submit"
             className="ml-2 bg-primary text-primary-foreground px-3 py-2 rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={!newTask.trim()}
+            disabled={!newTask.trim() || isSubmitting}
           >
-            Add
+            {isSubmitting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              'Add'
+            )}
           </button>
         </form>
         
@@ -219,6 +270,12 @@ const TimeCard = () => {
                 <span className={`flex-1 text-sm ${task.completed ? 'line-through text-muted-foreground' : ''}`}>
                   {task.text}
                 </span>
+                <button
+                  onClick={() => deleteTask(task.id)}
+                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                >
+                  <Trash2 size={16} />
+                </button>
               </motion.div>
             ))
           )}
