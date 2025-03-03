@@ -1,10 +1,11 @@
-
 import { format } from "date-fns";
 import { motion } from "framer-motion";
-import { Clock, LogIn, LogOut, CheckSquare, Square } from "lucide-react";
+import { Clock, LogIn, LogOut, CheckSquare, Square, Loader2 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
-import { CheckTimeRecord } from "@/lib/types";
-import { useState } from "react";
+import { CheckTimeRecord, Task } from "@/lib/types";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 
 const getRecordIcon = (type: 'check-in' | 'check-out') => {
   return type === 'check-in' ? (
@@ -22,7 +23,8 @@ const TimeCard = () => {
   const { selectedDate, getDayRecords } = useAppStore();
   const { records, totalHours } = getDayRecords(selectedDate);
   const [newTask, setNewTask] = useState("");
-  const [tasks, setTasks] = useState<{id: string; text: string; completed: boolean}[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
   
   const formatTime = (date: Date) => {
     return format(date, "h:mm a");
@@ -35,22 +37,96 @@ const TimeCard = () => {
     return `${wholeHours}h ${minutes}m`;
   };
 
-  const handleAddTask = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newTask.trim()) {
-      setTasks([...tasks, {
-        id: crypto.randomUUID(),
-        text: newTask.trim(),
-        completed: false
-      }]);
-      setNewTask("");
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  const fetchTasks = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching tasks:', error);
+        toast({
+          title: "Error fetching tasks",
+          description: error.message,
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setTasks(data || []);
+    } catch (error) {
+      console.error('Unexpected error:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const toggleTaskCompletion = (taskId: string) => {
-    setTasks(tasks.map(task => 
-      task.id === taskId ? { ...task, completed: !task.completed } : task
-    ));
+  const handleAddTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTask.trim()) return;
+    
+    try {
+      const newTaskObj = {
+        text: newTask.trim(),
+        completed: false
+      };
+      
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert(newTaskObj)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error adding task:', error);
+        toast({
+          title: "Error adding task",
+          description: error.message,
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setTasks([data, ...tasks]);
+      setNewTask("");
+      toast({
+        title: "Task added",
+        description: "Your task has been saved successfully."
+      });
+    } catch (error) {
+      console.error('Unexpected error:', error);
+    }
+  };
+
+  const toggleTaskCompletion = async (taskId: string, currentState: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ completed: !currentState })
+        .eq('id', taskId);
+      
+      if (error) {
+        console.error('Error updating task:', error);
+        toast({
+          title: "Error updating task",
+          description: error.message,
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setTasks(tasks.map(task => 
+        task.id === taskId ? { ...task, completed: !currentState } : task
+      ));
+    } catch (error) {
+      console.error('Unexpected error:', error);
+    }
   };
   
   return (
@@ -107,14 +183,19 @@ const TimeCard = () => {
           />
           <button 
             type="submit"
-            className="ml-2 bg-primary text-primary-foreground px-3 py-2 rounded-md text-sm font-medium hover:bg-primary/90"
+            className="ml-2 bg-primary text-primary-foreground px-3 py-2 rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!newTask.trim()}
           >
             Add
           </button>
         </form>
         
         <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
-          {tasks.length === 0 ? (
+          {loading ? (
+            <div className="flex justify-center items-center py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : tasks.length === 0 ? (
             <div className="text-center text-sm text-muted-foreground py-4">
               No tasks added yet
             </div>
@@ -127,7 +208,7 @@ const TimeCard = () => {
                 className="flex items-center gap-2 p-2 hover:bg-muted/40 rounded-md group"
               >
                 <button 
-                  onClick={() => toggleTaskCompletion(task.id)}
+                  onClick={() => toggleTaskCompletion(task.id, task.completed)}
                   className="flex-shrink-0 text-muted-foreground hover:text-primary transition-colors"
                 >
                   {task.completed ? 

@@ -9,6 +9,27 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      tasks: {
+        Row: {
+          completed: boolean
+          created_at: string
+          id: string
+          text: string
+        }
+        Insert: {
+          completed?: boolean
+          created_at?: string
+          id?: string
+          text: string
+        }
+        Update: {
+          completed?: boolean
+          created_at?: string
+          id?: string
+          text?: string
+        }
+        Relationships: []
+      }
       "Tracker Entries": {
         Row: {
           completed: boolean | null

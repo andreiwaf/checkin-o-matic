@@ -11,3 +11,10 @@ export interface DayRecord {
   records: CheckTimeRecord[];
   totalHours: number | null;
 }
+
+export interface Task {
+  id: string;
+  text: string;
+  completed: boolean;
+  created_at: string;
+}
