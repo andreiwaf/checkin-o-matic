@@ -30,27 +30,6 @@ export type Database = {
         }
         Relationships: []
       }
-      "Tracker Entries": {
-        Row: {
-          completed: boolean | null
-          created_at: string
-          id: number
-          tasks: string | null
-        }
-        Insert: {
-          completed?: boolean | null
-          created_at?: string
-          id?: number
-          tasks?: string | null
-        }
-        Update: {
-          completed?: boolean | null
-          created_at?: string
-          id?: number
-          tasks?: string | null
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
