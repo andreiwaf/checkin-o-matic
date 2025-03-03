@@ -5,6 +5,18 @@ import { Clock, LogIn, LogOut } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { CheckTimeRecord } from "@/lib/types";
 
+const getRecordIcon = (type: 'check-in' | 'check-out') => {
+  return type === 'check-in' ? (
+    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+      <LogIn size={16} />
+    </div>
+  ) : (
+    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
+      <LogOut size={16} />
+    </div>
+  );
+};
+
 const TimeCard = () => {
   const { selectedDate, getDayRecords } = useAppStore();
   const { records, totalHours } = getDayRecords(selectedDate);
@@ -18,18 +30,6 @@ const TimeCard = () => {
     const minutes = Math.round((hours - wholeHours) * 60);
     
     return `${wholeHours}h ${minutes}m`;
-  };
-  
-  const getRecordIcon = (type: 'check-in' | 'check-out') => {
-    return type === 'check-in' ? (
-      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-        <LogIn size={16} />
-      </div>
-    ) : (
-      <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
-        <LogOut size={16} />
-      </div>
-    );
   };
   
   return (
